@@ -11,4 +11,4 @@ app = create_app()
 with app.app_context():
     db.create_all()
     seed_data()
-    print("Database reset.")
+    print("Database reset and seeded.")
