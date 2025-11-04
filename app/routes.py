@@ -1,98 +1,71 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from sqlalchemy import text
+from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
+from sqlalchemy import text
 from datetime import datetime
-import logging
 
-from . import db
-from .models import User, Post
-
-main = Blueprint('main',__name__)
-
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
-)
-
-def get_current_user():
-    if 'user_id' in session:
-        return User.query.get(session['user_id'])
-    return None
+main = Blueprint('main', __name__)
 
 @main.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        ip = request.remote_addr
 
-        if not username or not password:
-            flash("Please enter both username and password.")
-            return render_template('login.html')
-
-        user = User.query.filter_by(username = username, password=password).first()
-
-        if user:
-            # Successful login
-            session['user_id'] = user.id
-            session['role'] = user.role
-            flash(f"Welcome, {user.username} ({user.role})!")
-            logging.info(f"Successful login: username={username}, role={user.role}, ip={ip}")
+        # Temporary feedback for testing form submission
+        if username and password:
+            current_app.logger.info(
+                f"[LOGIN SUCCESS] Username: {username}, IP: {request.remote_addr}, "
+                f"Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            flash(f"Form submitted with username: {username}")
             return redirect(url_for('main.dashboard'))
         else:
-            # Failed login
-            flash("Invalid username or password.")
-            logging.warning(f"Failed login attempt: username={username}, ip={ip}, time={datetime.utcnow()}")
-            return render_template('login.html')
+            current_app.logger.warning(
+                f"[LOGIN FAILED] Username: {username}, IP: {request.remote_addr}, "
+                f"Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            flash("Please enter both username and password.")
 
     return render_template('login.html')
 
-@main.route('/dashboard', methods=['GET', 'POST'])
+@main.route('/dashboard', methods=['GET'])
 def dashboard():
-    user = get_current_user()
-    if not user:
-        flash("Please login first")
-        return redirect(url_for('main.login'))
-    role = user.role
-    search_term = None
-    results = None
+    return render_template('dashboard.html')
 
-    if request.method == 'POST':
-        search_term = request.form.get('search_term').strip()
-        if search_term:
-            sql = text("""
-                SELECT posts.id, posts.title, posts.content, users.username
-                FROM posts
-                JOIN users ON posts.author_id = users.id
-                WHERE posts.title LIKE :term OR posts.content LIKE :term
-            """)
+@main.route('/search', methods=['POST'])
+def search():
+    search_term = request.form.get('search', '').strip()
+    results = []
 
-            params = {"term": f"%{search_term}%"}  # <-- fixed key, no space
-            results = db.session.execute(sql, params).fetchall()
+    if not search_term:
+        flash("Please enter a search term.", "warning")
+        return render_template('dashboard.html', results=results)
 
-            compiled_sql = sql.compile(compile_kwargs={"literal_binds" : True})
-            logging.info(
-                f"User {user.username} (role={user.role}) executed search: "
-                f"SQL={compiled_sql}, params={params}"
-            )
-        else:
-            flash("Please enter a search term")
-    if role == 'admin':
-        posts = Post.query.join(User, Post.author_id == User.id)\
-                          .add_columns(Post.id, Post.title, Post.content, User.username, User.role)\
-                          .all()
-    elif role == 'moderator':
-        posts = Post.query.join(User, Post.author_id == User.id)\
-                          .add_columns(Post.id, Post.title, User.username)\
-                          .all()
-    else:  # user
-        posts = Post.query.filter_by(author_id=user.id).all()
+    sql = text("""
+        SELECT * FROM posts
+        WHERE title LIKE :term OR content LIKE :term
+    """)
 
-    return render_template(
-        'dashboard.html',
-        user=user,
-        posts=posts,
-        results=results,
-        search_term=search_term
-    )
+    params = {"term": f"%{search_term}%"}
+
+    try:
+        from . import db
+        results = db.session.execute(sql, params).fetchall()
+
+        # Log successful query execution
+        current_app.logger.info(
+            f"[SEARCH QUERY] User: test_user | SQL: {sql.text} | Params: {params} | "
+            f"IP: {request.remote_addr} | Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+
+    except Exception as e:
+        current_app.logger.warning(
+            f"[SEARCH ERROR] SQL: {sql.text} | Params: {params} | Error: {str(e)} | "
+            f"IP: {request.remote_addr} | Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        flash("Error processing search query.", "danger")
+
+    return render_template('dashboard.html', results=results)
+
 
