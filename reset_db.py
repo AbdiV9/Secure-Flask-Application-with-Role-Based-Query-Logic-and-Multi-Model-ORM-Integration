@@ -10,5 +10,5 @@ if os.path.exists(db_path):
 app = create_app()
 with app.app_context():
     db.create_all()
-    seed_data()
+    seed_data()   # <---- Call seed_data here
     print("Database reset and seeded.")
