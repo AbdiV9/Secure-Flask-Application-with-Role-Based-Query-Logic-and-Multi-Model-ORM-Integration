@@ -3,6 +3,37 @@
 <h2>Dashboard</h2>
 <p>Welcome, {{ user.username }} ({{ user.role }})</p>
 
+<!-- 🔍 Search Form -->
+<form method="POST" style="margin-bottom: 15px;">
+    <input type="text" name="search_term" placeholder="Search posts..." value="{{ search_term or '' }}">
+    <input type="submit" value="Search">
+</form>
+
+{% if results %}
+    <h3>Search Results for "{{ search_term }}"</h3>
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Content</th>
+        </tr>
+        {% for row in results %}
+        <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.title }}</td>
+            <td>{{ row.username }}</td>
+            <td>{{ row.content }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% elif search_term %}
+    <p>No results found for "{{ search_term }}".</p>
+{% endif %}
+
+<hr>
+
+<!-- Role-based post display -->
 <h3>Your Posts</h3>
 <table border="1" cellpadding="5">
     <tr>
@@ -38,5 +69,7 @@
 </table>
 
 <p><a href="{{ url_for('main.login') }}">Logout</a></p>
-
 {% endblock %}
+
+
+

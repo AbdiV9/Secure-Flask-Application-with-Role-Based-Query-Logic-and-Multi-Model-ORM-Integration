@@ -51,27 +51,48 @@ def login():
 def dashboard():
     user = get_current_user()
     if not user:
-        flash("Please log in first.")
+        flash("Please login first")
         return redirect(url_for('main.login'))
-
     role = user.role
+    search_term = None
+    results = None
 
-    # --- Role-based Query Logic ---
+    if request.method == 'POST':
+        search_term = request.form.get('search_term').strip()
+        if search_term:
+            sql = text("""
+                SELECT posts.id, posts.title, posts.content, users.username
+                FROM posts
+                JOIN users ON posts.author_id = users.id
+                WHERE posts.title LIKE :term OR posts.content LIKE :term
+            """)
+
+            params = {"term": f"%{search_term}%"}  # <-- fixed key, no space
+            results = db.session.execute(sql, params).fetchall()
+
+            compiled_sql = sql.compile(compile_kwargs={"literal_binds" : True})
+            logging.info(
+                f"User {user.username} (role={user.role}) executed search: "
+                f"SQL={compiled_sql}, params={params}"
+            )
+        else:
+            flash("Please enter a search term")
     if role == 'admin':
-        # Admin sees all posts
         posts = Post.query.join(User, Post.author_id == User.id)\
                           .add_columns(Post.id, Post.title, Post.content, User.username, User.role)\
                           .all()
-
     elif role == 'moderator':
-        # Moderator sees all posts but limited fields
         posts = Post.query.join(User, Post.author_id == User.id)\
                           .add_columns(Post.id, Post.title, User.username)\
                           .all()
-
-    else:  # Regular user
-        # User sees only their own posts
+    else:  # user
         posts = Post.query.filter_by(author_id=user.id).all()
 
-    return render_template('dashboard.html', posts=posts, user=user)
+    return render_template(
+        'dashboard.html',
+        user=user,
+        posts=posts,
+        results=results,
+        search_term=search_term
+    )
 
