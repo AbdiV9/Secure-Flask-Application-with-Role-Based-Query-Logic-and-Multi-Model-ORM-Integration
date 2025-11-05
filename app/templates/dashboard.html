@@ -3,45 +3,80 @@
 
 {% block content %}
 <h2>Dashboard</h2>
-<p>Welcome to your dashboard.</p>
+<p>Welcome, **{{ session['username'] }}** (Role: **{{ session['role'] }}**).</p>
 
-<!-- 🔍 Secure Search Form -->
 <form method="POST" action="{{ url_for('main.search') }}">
-    <label for="search">Search Posts:</label><br>
+    <label for="search">Search Posts:</label>
     <input type="text" id="search" name="search" placeholder="Enter keyword..." required>
     <button type="submit">Search</button>
 </form>
 
 <hr>
 
-
-{% if results is defined %}
-    {% if results %}
-        <h3>Search Results:</h3>
-        <ul>
-            {% for row in results %}
-                <li>
-                    <strong>{{ row.title | e }}</strong><br>
-                    {{ row.content | e }}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No results found.</p>
-    {% endif %}
-{% endif %}
-
-<hr>
-
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}
         <ul>
-        {% for message in messages %}
-            <li class="message">{{ message }}</li>
+        {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
         {% endfor %}
         </ul>
     {% endif %}
 {% endwith %}
+
+{% if search_results is defined and search_results is not none %}
+    <h3>Search Results for "{{ search_term | e }}":</h3>
+    {% if search_results %}
+        <ul>
+            {% for row in search_results %}
+                <li>
+                    <strong>Post ID: {{ row.id | e }}</strong><br>
+                    Title: {{ row.title | e }}<br>
+                    {% if row.content is defined %}
+                        Content: {{ row.content | e }}<br>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No results found for "{{ search_term | e }}".</p>
+    {% endif %}
+    <hr>
+{% endif %}
+
+
+<h3>Role-Based Post View:</h3>
+{% if posts %}
+    <table border="1" cellpadding="5">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                {% if role in ['admin', 'user'] %}
+                    <th>Content</th>
+                    <th>Author</th>
+                {% elif role == 'moderator' %}
+                    <th>Author (Username)</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in posts %}
+                <tr>
+                    <td>{{ post.id | e }}</td>
+                    <td>{{ post.title | e }}</td>
+                    {% if role in ['admin', 'user'] %}
+                        <td>{{ post.content | e }}</td>
+                        <td>{{ post.username | e }}</td>
+                    {% elif role == 'moderator' %}
+                        <td>{{ post.username | e }}</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No posts available under your current role view.</p>
+{% endif %}
 
 {% endblock %}
 

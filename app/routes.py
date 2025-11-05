@@ -6,6 +6,14 @@ from datetime import datetime
 
 main = Blueprint('main', __name__)
 
+@main.route('/', methods=['GET'])
+def index():
+    # Redirect to login if not authenticated
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+    return redirect(url_for('main.dashboard'))
+
+
 @main.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -68,4 +76,9 @@ def search():
 
     return render_template('dashboard.html', results=results)
 
-
+@main.route('/logout')
+def logout():
+    current_app.logger.info(f"[LOGOUT] User: {session.get('username')}, IP: {request.remote_addr}")
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for('main.login'))
