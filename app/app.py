@@ -12,16 +12,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# ---------------------------
+
 # Logging Setup
-# ---------------------------
 handler = RotatingFileHandler("app.log", maxBytes=1_000_000, backupCount=3)
 logging.basicConfig(level=logging.INFO, handlers=[handler],
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
-# ---------------------------
+
 # Database Models
-# ---------------------------
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -38,16 +36,14 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-# ---------------------------
+
 # Routes
-# ---------------------------
 @app.route('/')
 def index():
     return redirect(url_for('login'))
 
-# ---------------------------
+
 # Login Route
-# ---------------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -68,9 +64,8 @@ def login():
 
     return render_template('login.html')
 
-# ---------------------------
+
 # Dashboard / Search
-# ---------------------------
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     if 'user_id' not in session:
@@ -103,18 +98,17 @@ def dashboard():
 
     return render_template('dashboard.html', posts=results, role=role)
 
-# ---------------------------
+
 # Logout
-# ---------------------------
 @app.route('/logout')
 def logout():
     logging.info(f"{session.get('username')} logged out")
     session.clear()
     return redirect(url_for('login'))
 
-# ---------------------------
+
 # Initialize Database with Sample Data
-# ---------------------------
+
 @app.before_first_request
 def create_tables():
     db.create_all()
@@ -137,8 +131,6 @@ def create_tables():
         db.session.add_all(posts)
         db.session.commit()
 
-# ---------------------------
 # Run App
-# ---------------------------
 if __name__ == "__main__":
     app.run(debug=True)

@@ -6,24 +6,25 @@ from sqlalchemy import func # Import func for seeding
 # No fields or logic are included in starter code.
 class User(db.Model):
     __tablename__ = 'users'
-
+   # Initializes the max characters whether it is unique and whether it is null
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(80), nullable=False)
-
+    # Defines the relationship between User and Post models
     posts = db.relationship('Post', backref='author', lazy='dynamic')
 
-
+#  Method that sets the users password
 def set_password(self, password):
     self.password_hash = generate_password_hash(password)
 
-
+# Method to check if an input password matched the stored hash
+# It compares the input password after being hashed with the stored hash
 def check_password(self, password):
     return check_password_hash(self.password_hash, password)
 
-
+# Representation method: Defines how a User object is displayed when printed
 def __repr__(self):
     return f"<User {self.username} ({self.role})>"
 
